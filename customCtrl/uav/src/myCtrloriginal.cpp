@@ -115,7 +115,7 @@ void MyController::UpdateFrom(const io_data *data)
     Euler rpy = q.ToEuler();    
     tau.x = Kp_att_val.x*(rpy.roll + u.y) + Kd_att_val.x*omega.x;
     tau.y = Kp_att_val.y*(rpy.pitch - u.x) + Kd_att_val.y*omega.y;
-    tau.z = Kp_att_val.z*(rpy.YawDistanceFrom(yaw_ref)) + Kd_att_val.z*omega.z;
+    tau.z = Kp_att_val.z*(rpy.yaw - yaw_ref) + Kd_att_val.z*omega.z;
     applyMotorConstant(tau);
     tau.Saturate(sat_att->Value());
 
