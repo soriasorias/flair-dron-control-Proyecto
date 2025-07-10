@@ -162,9 +162,10 @@ void MyController::UpdateFrom(const io_data *data)
     //u.z = piz1*zr_pp + pip3*zr_p - pip4_limited + KDp_val.z*spz;
 
     // PD original
-    u.x = 0.2f*pos_error.x + 0.2f*vel_error.x;
-    u.y = 0.2f*pos_error.y + 0.2f*vel_error.y;
-    u.z = 1.5f*pos_error.z + 0.5f*vel_error.z;
+    // 0.2, 0.2, 1.5    0.2, 0.2, 0.5
+    u.x = Lambdap_val.x*pos_error.x + KDp_val.x*vel_error.x;
+    u.y = Lambdap_val.y*pos_error.y + KDp_val.y*vel_error.y;
+    u.z = Lambdap_val.z*pos_error.z + KDp_val.z*vel_error.z;
     //std::cout << pos_error.x << "\t" << pos_error.y << "\t" << pos_error.z << std::endl;
     //std::cout << pip1 << "\t" << piz1 << "\t" << pip2 << "\t" << pip3 << "\t" << pip4_limited << std::endl;
 
@@ -180,7 +181,7 @@ void MyController::UpdateFrom(const io_data *data)
     // sliding surface
     float uxr_p = - uyd_p + Lambdaq_val.x * (- y - rpy.roll);
     float uyr_p = uxd_p + Lambdaq_val.y * (x - rpy.pitch);
-    float uzr_p = Lambdaq_val.z * (yaw_ref - rpy.yaw);
+    float uzr_p = Lambdaq_val.z * (-rpy.YawDistanceFrom(yaw_ref));
 
     float uxr_pp = - uyd_pp + Lambdaq_val.x * (- uyd_p - omega.x);
     float uyr_pp = uxd_pp + Lambdaq_val.y * (uxd_p - omega.y);
@@ -188,7 +189,7 @@ void MyController::UpdateFrom(const io_data *data)
 
     float sx = (- uyd_p - omega.x) + Lambdaq_val.x * (- y - rpy.roll);
     float sy = (uxd_p - omega.y) + Lambdaq_val.y * (x - rpy.pitch);
-    float sz = (0.0f - omega.z) + Lambdaq_val.z * (yaw_ref - rpy.yaw);
+    float sz = (0.0f - omega.z) + Lambdaq_val.z * (-rpy.YawDistanceFrom(yaw_ref));
 
     // adaptive mechanism pi_p = Gamma^(-1)*Y*s
     float lambda = 0.0f;
@@ -212,12 +213,12 @@ void MyController::UpdateFrom(const io_data *data)
     tau.z = - KDq_val.z*sz + 0*pi3*uzr_pp;
 
     // PD original
-    tau.x = 4.0f*(rpy.roll + u.y) + 2.0f*omega.x;
-    tau.y = 4.0f*(rpy.pitch - u.x) + 2.0f*omega.y;
+    tau.x = Lambdaq_val.x*(rpy.roll + u.y) + KDq_val.x*omega.x;
+    tau.y = Lambdaq_val.y*(rpy.pitch - u.x) + KDq_val.y*omega.y;
     //tau.z = 3.0f*(rpy.yaw) + 1.5f*omega.z;
     
     //std::cout << KDq_val.x*sx << "\t" << pi1_limited*uxr_pp - pi4_limited*uyr_p*omega.z << std::endl;
-    std::cout << rpy.roll + u.y << "\t" << rpy.pitch - u.x << "\t" << yaw_ref - rpy.yaw << std::endl;
+    std::cout << rpy.roll + u.y << "\t" << rpy.pitch - u.x << "\t" << rpy.YawDistanceFrom(yaw_ref) << std::endl;
     //std::cout << pi1_limited << "\t" << pi2_limited << "\t" << pi3_limited << "\t" << pi4_limited << "\t" << pi5_limited << std::endl;
 
     applyMotorConstant(tau);
@@ -231,9 +232,9 @@ void MyController::UpdateFrom(const io_data *data)
     {
         thrust = -sat_att->Value();
     }
-    else if(thrust >= 0.001f)
+    else if(thrust >= 0.0f)
     {
-        thrust = 0.001f; 
+        thrust = 0.0f; 
     }
     // Debug thrust value
     //std::cout << thrust << std::endl;
