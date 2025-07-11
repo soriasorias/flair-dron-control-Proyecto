@@ -116,6 +116,7 @@ void MyController::UpdateFrom(const io_data *data)
 
     // Position adaptive controller
     // trayectory generator
+    /*
     trajectory_gen(vpx, xp, xd_p, pos_ref.x, delta_t, a);
     trajectory_gen(vpy, yp, yd_p, pos_ref.y, delta_t, a);
     trajectory_gen(vpz, zp, zd_p, pos_ref.z, delta_t, a);
@@ -155,6 +156,7 @@ void MyController::UpdateFrom(const io_data *data)
     float pip2_limited = scalep2 * std::tanh(pip2 / scalep2);
     float pip3_limited = scalep3 * std::tanh(pip3 / scalep3);
     float pip4_limited = scalep4 * std::tanh(pip4 / scalep4);
+    */
 
     // control law u = Y*pi + KD*s
     //u.x = pip1_limited*xr_pp + 0*pip2_limited*xr_p + KDp_val.x*spx;
@@ -192,34 +194,28 @@ void MyController::UpdateFrom(const io_data *data)
     float sz = (0.0f - omega.z) + Lambdaq_val.z * (-rpy.YawDistanceFrom(yaw_ref));
 
     // adaptive mechanism pi_p = Gamma^(-1)*Y*s
-    float lambda = 0.0f;
-    pi1 +=  delta_t * (uxr_pp*sx/Gammaq_val.x - lambda * pi1); // se utiliza un termino de olvido o leakage
-    pi2 +=  delta_t * (uyr_pp*sy/Gammaq_val.y - lambda * pi2);
-    pi3 +=  delta_t * (uzr_pp*sz/Gammaq_val.z - lambda * pi3);
-    pi4 += -delta_t * (uyr_p*omega.z*sy/Gammaq_val.x - lambda * pi4);
-    pi5 += -delta_t * (uxr_p*omega.z*sx/Gammaq_val.y - lambda * pi5);
+    float lambda = 0.1f;
+    pi1 +=  delta_t * (uxr_pp*sx*Gammaq_val.x - lambda * pi1); // se utiliza un termino de olvido o leakage
+    pi2 +=  delta_t * (uyr_pp*sy*Gammaq_val.y - lambda * pi2);
+    pi3 +=  delta_t * (uzr_pp*sz*Gammaq_val.z - lambda * pi3);
+    pi4 += -delta_t * (uyr_p*omega.z*sy*Gammaq_val.x - lambda * pi4);
+    pi5 += -delta_t * (uxr_p*omega.z*sx*Gammaq_val.y - lambda * pi5);
 
-    float scale1 = 0.01f; // valor máximo deseado para pi1
-    float scale2 = 0.2f;
-    float pi1_limited = scale1 * std::tanh(pi1 / scale1); // se limitan los parametros en rangos realistas
-    float pi2_limited = scale1 * std::tanh(pi2 / scale1);
-    float pi3_limited = scale2 * std::tanh(pi3 / scale2);
-    float pi4_limited = scale2 * std::tanh(pi4 / scale2);
-    float pi5_limited = scale2 * std::tanh(pi5 / scale2);
+    //float scale1 = 0.01f; // valor máximo deseado para pi1
+    //float scale2 = 0.2f;
+    //float pi1_limited = scale1 * std::tanh(pi1 / scale1); // se limitan los parametros en rangos realistas
+    //float pi2_limited = scale1 * std::tanh(pi2 / scale1);
+    //float pi3_limited = scale2 * std::tanh(pi3 / scale2);
+    //float pi4_limited = scale2 * std::tanh(pi4 / scale2);
+    //float pi5_limited = scale2 * std::tanh(pi5 / scale2);
 
     // control law u = Y*pi + KD*s
-    //tau.x = - KDq_val.x*sx + 0*pi1*uxr_pp - 0*pi4*uyr_p*omega.z;
-    //tau.y = - KDq_val.y*sy + 0*pi2*uyr_pp - 0*pi5*uxr_p*omega.z;
-    tau.z = - KDq_val.z*sz + 0*pi3*uzr_pp;
-
-    // PD original
-    tau.x = Lambdaq_val.x*(rpy.roll + u.y) + KDq_val.x*omega.x;
-    tau.y = Lambdaq_val.y*(rpy.pitch - u.x) + KDq_val.y*omega.y;
-    //tau.z = 3.0f*(rpy.yaw) + 1.5f*omega.z;
-    
-    //std::cout << KDq_val.x*sx << "\t" << pi1_limited*uxr_pp - pi4_limited*uyr_p*omega.z << std::endl;
+    tau.x = - KDq_val.x*sx - pi1*uxr_pp + 0*pi4*uyr_p*omega.z;
+    tau.y = - KDq_val.y*sy - pi2*uyr_pp + 0*pi5*uxr_p*omega.z;
+    tau.z = - KDq_val.z*sz - pi3*uzr_pp;
+    //std::cout << - KDq_val.x*sx << "\t" << - pi1*uxr_pp + pi4*uyr_p*omega.z << std::endl;
     std::cout << rpy.roll + u.y << "\t" << rpy.pitch - u.x << "\t" << rpy.YawDistanceFrom(yaw_ref) << std::endl;
-    //std::cout << pi1_limited << "\t" << pi2_limited << "\t" << pi3_limited << "\t" << pi4_limited << "\t" << pi5_limited << std::endl;
+    //std::cout << pi1 << "\t" << pi2 << "\t" << pi3 << "\t" << pi4 << "\t" << pi5 << std::endl;
 
     applyMotorConstant(tau);
     tau.Saturate(sat_att->Value());
